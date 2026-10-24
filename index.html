@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="my">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#155eef">
+  <meta name="description" content="KT Chat — real-time messages and voice/video calling">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
+  <title>KT Chat</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, sans-serif; color:#172033; background:#f3f6fb; }
+    * { box-sizing:border-box; }
+    body { margin:0; }
+    header { background:#155eef; color:white; padding:16px; }
+    header h1 { margin:0; font-size:1.35rem; }
+    header p { margin:4px 0 0; font-size:.9rem; opacity:.9; }
+    main { max-width:920px; margin:0 auto; padding:14px; }
+    .card { background:white; border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 2px 12px #15284b0d; }
+    h2 { margin:0 0 12px; font-size:1.1rem; }
+    input, button { font:inherit; border-radius:10px; padding:11px 12px; }
+    input { width:100%; border:1px solid #cbd5e1; margin:5px 0 10px; }
+    button { border:0; background:#155eef; color:white; cursor:pointer; font-weight:600; }
+    button.secondary { background:#e8eefb; color:#16346d; }
+    button.danger { background:#b42318; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .row > input { flex:1; min-width:160px; }
+    .muted { color:#667085; font-size:.9rem; overflow-wrap:anywhere; }
+    .hidden { display:none !important; }
+    .useritem, .chatitem { border:1px solid #e4e7ec; border-radius:10px; padding:10px; margin:7px 0; }
+    .useritem { display:flex; gap:8px; justify-content:space-between; align-items:center; }
+    .useritem .who { min-width:0; overflow-wrap:anywhere; }
+    #messages { height:310px; overflow:auto; background:#f8fafc; border:1px solid #e4e7ec; border-radius:12px; padding:10px; }
+    .msg { margin:8px 0; display:flex; }
+    .msg.mine { justify-content:flex-end; }
+    .bubble { max-width:86%; padding:9px 11px; background:#e5edff; border-radius:12px; overflow-wrap:anywhere; white-space:pre-wrap; }
+    .mine .bubble { background:#d1fadf; }
+    .bubble small { display:block; color:#667085; margin-top:5px; font-size:.72rem; }
+    #status { white-space:pre-wrap; margin-top:10px; font-size:.9rem; }
+    .good { color:#067647; } .bad { color:#b42318; }
+    .callbox { border:1px solid #c7d7fe; background:#f5f8ff; border-radius:12px; padding:12px; margin-top:12px; }
+    .videos { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    video { width:100%; background:#101828; border-radius:10px; min-height:120px; max-height:240px; object-fit:cover; }
+    .foot { text-align:center; color:#667085; font-size:.78rem; padding:10px; }
+    @media(max-width:520px) { .videos { grid-template-columns:1fr; } video { max-height:200px; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>💬 KT Chat</h1>
+  <p>အခမဲ့စမ်းသပ်ဗားရှင်း · Account + Real-time text chat</p>
+</header>
+<main>
+  <section id="setup" class="card">
+    <h2>၁။ Firebase Web Config ထည့်ပါ</h2>
+    <p>Firebase Console → Project settings ⚙️ → General → Your apps → Web app → SDK setup and configuration → Config မှ အောက်ကတန်ဖိုးများကို ကူးထည့်ပါ။ API key ကို ဒီ chat ထဲ မပို့ပါနှင့်။</p>
+    <label>apiKey</label><input id="apiKey" autocomplete="off" placeholder="AIza...">
+    <label>authDomain</label><input id="authDomain" autocomplete="off" placeholder="kt-chat-bb6e3.firebaseapp.com">
+    <label>projectId</label><input id="projectId" autocomplete="off" value="kt-chat-bb6e3">
+    <label>appId</label><input id="appId" autocomplete="off" placeholder="1:...:web:...">
+    <button id="saveConfig">Config ကို သိမ်းပြီး အသုံးပြုမယ်</button>
+    <p class="muted">Config ကို ဒီ browser ရဲ့ local storage ထဲ သိမ်းထားပါတယ်။ တခြားအသုံးပြုသူများကလည်း သူတို့ browser မှာ config ကို တစ်ကြိမ် ထည့်ရပါမယ်။ Firebase web config က secret key မဟုတ်ပါ; service-account private key များကို မထည့်ပါနှင့်။</p>
+  </section>
+
+  <section id="authCard" class="card hidden">
+    <h2>၂။ အကောင့်ဖွင့် / ဝင်ရန်</h2>
+    <label>ပြသမည့်အမည်</label><input id="displayName" maxlength="40" placeholder="ဥပမာ - Aung Aung">
+    <label>Email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+    <label>Password (အနည်းဆုံး ၆ လုံး)</label><input id="password" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="row">
+      <button id="signup">Gmail အကောင့်ဖွင့်မယ်</button>
+      <button id="login" class="secondary">Gmail နဲ့ဝင်မယ်</button>
+    </div>
+    <hr style="border:0;border-top:1px solid #e4e7ec;margin:16px 0">
+    <h2>ဖုန်းနံပါတ်နဲ့ ဝင်ရန်</h2>
+    <label>ဖုန်းနံပါတ် (နိုင်ငံကုဒ်နဲ့)</label>
+    <input id="phoneNumber" type="tel" autocomplete="tel" placeholder="ဥပမာ +959xxxxxxxxx">
+    <div id="recaptcha-container"></div>
+    <div class="row">
+      <button id="sendSms" type="button">SMS ကုဒ်ပို့မယ်</button>
+    </div>
+    <label>SMS မှရတဲ့ အတည်ပြုကုဒ်</label>
+    <input id="smsCode" inputmode="numeric" autocomplete="one-time-code" placeholder="ကုဒ် ၆ လုံး">
+    <button id="verifySms" type="button" class="secondary">ကုဒ်အတည်ပြုပြီး ဝင်မယ်</button>
+    <p class="muted">Gmail နဲ့ဝင်တာက Password အသုံးပြုပါတယ်။ ဖုန်းနံပါတ်နဲ့ဝင်တာက SMS OTP သုံးပါတယ်။ အကောင့်နှစ်မျိုးက အလိုအလျောက် အကောင့်တစ်ခုတည်းဖြစ်မသွားပါ။</p>
+    <p class="muted">သတိ: Firebase Phone Authentication SMS ပို့ခြင်းအတွက် လက်ရှိစည်းမျဉ်းအရ Blaze billing plan လိုအပ်နိုင်ပြီး SMS တစ်စောင်ချင်း ကုန်ကျနိုင်ပါတယ်။ Billing မချိတ်ချင်ပါက Phone sign-in ကို မဖွင့်ဘဲ Gmail နည်းလမ်းနဲ့ အခမဲ့စတင်ပါ။</p>
+  </section>
+
+  <section id="appCard" class="hidden">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div><h2 id="welcome">KT Chat</h2><div class="muted">သင့် UID (အခြားသူကိုပေးပြီး chat စတင်နိုင်သည်)</div><div id="myUid" class="muted"></div></div>
+        <button id="logout" class="secondary">ထွက်မယ်</button>
+      </div>
+      <button id="copyUid" class="secondary">UID ကူးယူမယ်</button>
+    </div>
+    <div class="card">
+      <h2>၃။ လူတစ်ယောက်နဲ့ Chat စမယ်</h2>
+      <p class="muted">တစ်ဖက်လူက အရင်အကောင့်ဖွင့်ထားရပါမယ်။ သူ့ UID ကိုထည့်ပြီး Chat စပါ။</p>
+      <div class="row"><input id="targetUid" placeholder="တစ်ဖက်လူ၏ UID ထည့်ပါ"><button id="startChat">Chat စမယ်</button></div>
+      <h2 style="margin-top:18px">သင့် Chat များ</h2>
+      <div id="chatList" class="muted">Chat များကို ဖတ်နေသည်...</div>
+    </div>
+    <div class="card">
+      <h2 id="chatTitle">၄။ စကားပြောခန်း</h2>
+      <div id="messages"><p class="muted">အပေါ်ကနေ Chat ရွေးပါ သို့မဟုတ် UID ထည့်ပါ။</p></div>
+      <div class="row" style="margin-top:10px">
+        <button id="voiceCall" type="button">📞 Voice Call</button>
+        <button id="videoCall" type="button">📹 Video Call</button>
+        <button id="hangup" type="button" class="danger" disabled>ဖုန်းချမယ်</button>
+      </div>
+      <div id="callBox" class="callbox hidden">
+        <div id="callStatus">Call အခြေအနေ</div>
+        <div id="incomingControls" class="row hidden" style="margin-top:8px">
+          <button id="acceptCall">လက်ခံမယ်</button>
+          <button id="declineCall" class="secondary">ငြင်းမယ်</button>
+        </div>
+        <div class="videos">
+          <div><div class="muted">သင့်ဖုန်း</div><video id="localVideo" autoplay playsinline muted></video></div>
+          <div><div class="muted">တစ်ဖက်လူ</div><video id="remoteVideo" autoplay playsinline></video></div>
+        </div>
+      </div>
+      <form id="sendForm" class="row" style="margin-top:10px">
+        <input id="messageInput" maxlength="2000" placeholder="စာရေးပါ..." autocomplete="off" disabled>
+        <button id="sendBtn" type="submit" disabled>ပို့မယ်</button>
+      </form>
+    </div>
+  </section>
+  <div id="status" role="status"></div>
+  <div class="foot">KT Chat Starter · စာပို့စနစ် စမ်းသပ်ဗားရှင်း</div>
+</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber, updateProfile } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+const $ = (id) => document.getElementById(id);
+let app, auth, db, currentUser = null, activeChatId = null, stopMessages = null, stopChats = null;
+let stopIncomingCalls = null, pc = null, localStream = null, activeCallId = null, callMode = null, pendingIncoming = null, stopCallDoc = null, stopCallerIce = null, stopCalleeIce = null;
+let recaptchaVerifier = null, phoneConfirmation = null;
+const rtcConfig = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }] };
+const status = (msg, bad=false) => { $("status").textContent = msg; $("status").className = bad ? "bad" : "good"; };
+const show = (id, yes=true) => $(id).classList.toggle("hidden", !yes);
+function makeConfig() {
+  return {
+    apiKey: $("apiKey").value.trim(),
+    authDomain: $("authDomain").value.trim(),
+    projectId: $("projectId").value.trim(),
+    appId: $("appId").value.trim()
+  };
+}
+function initFirebase(config) {
+  if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId) {
+    status("Config အချက်အလက် မပြည့်စုံသေးပါ။ apiKey, authDomain, projectId, appId အားလုံးထည့်ပါ။", true); return;
+  }
+  try {
+    app = initializeApp(config);
+    auth = getAuth(app);
+    auth.useDeviceLanguage();
+    db = getFirestore(app);
+    show("setup", false); show("authCard", true);
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      if (!user) {
+        show("authCard", true); show("appCard", false);
+        if (stopChats) stopChats(); if (stopMessages) stopMessages();
+        if (stopIncomingCalls) stopIncomingCalls();
+        await cleanupCall(false);
+        activeChatId = null;
+        status("အကောင့်ဝင်ပါ သို့မဟုတ် အကောင့်အသစ်ဖွင့်ပါ။");
+        return;
+      }
+      show("authCard", false); show("appCard", true);
+      $("welcome").textContent = "မင်္ဂလာပါ " + (user.displayName || user.email || "အသုံးပြုသူ");
+      $("myUid").textContent = user.uid;
+      await setDoc(doc(db, "users", user.uid), {
+        displayName: user.displayName || (user.email || "KT Chat User").split("@")[0],
+        createdAt: serverTimestamp()
+      }, {merge:true});
+      listenChats();
+      listenIncomingCalls();
+      status("အကောင့်ဝင်ပြီးပါပြီ။ UID ကို သူငယ်ချင်းနဲ့ မျှဝေပြီး Chat စနိုင်ပါပြီ။");
+    });
+  } catch (e) {
+    status("Firebase စတင်မရပါ: " + e.message + "\nConfig မှန်/မမှန် ပြန်စစ်ပါ။", true);
+  }
+}
+$("saveConfig").onclick = () => {
+  const config = makeConfig();
+  if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId) {
+    status("Config အချက်အလက် မပြည့်စုံသေးပါ။ apiKey, authDomain, projectId, appId အားလုံးထည့်ပါ။", true); return;
+  }
+  try { localStorage.setItem("ktChatFirebaseConfig", JSON.stringify(config)); }
+  catch {}
+  initFirebase(config);
+};
+try {
+  const saved = localStorage.getItem("ktChatFirebaseConfig");
+  if (saved) {
+    const c = JSON.parse(saved);
+    $("apiKey").value = c.apiKey || "";
+    $("authDomain").value = c.authDomain || "";
+    $("projectId").value = c.projectId || "kt-chat-bb6e3";
+    $("appId").value = c.appId || "";
+    initFirebase(c);
+  }
+} catch {}
+$("signup").onclick = async () => {
+  const name = $("displayName").value.trim(), email = $("email").value.trim(), password = $("password").value;
+  if (!name) return status("ပြသမည့်အမည် ထည့်ပါ။", true);
+  if (password.length < 6) return status("Password ကို အနည်းဆုံး ၆ လုံး ထည့်ပါ။", true);
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(cred.user, {displayName:name});
+    await setDoc(doc(db, "users", cred.user.uid), {displayName:name, createdAt:serverTimestamp()}, {merge:true});
+    status("အကောင့်ဖွင့်ပြီးပါပြီ။");
+  } catch(e) { status(authError(e), true); }
+};
+$("login").onclick = async () => {
+  try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value); status("အကောင့်ဝင်ပြီးပါပြီ။"); }
+  catch(e) { status(authError(e), true); }
+};
+function authError(e) {
+  const map = {
+    "auth/invalid-email":"Email လိပ်စာ မမှန်ပါ။",
+    "auth/email-already-in-use":"ဒီ Email နဲ့ အကောင့်ရှိပြီးသားပါ။",
+    "auth/weak-password":"Password အားနည်းနေပါတယ်။",
+    "auth/invalid-credential":"Email သို့မဟုတ် Password မှားနေပါတယ်။",
+    "auth/operation-not-allowed":"Firebase Console မှာ Email/Password sign-in ကို Enable လုပ်ပါ။",
+    "auth/network-request-failed":"အင်တာနက်ချိတ်ဆက်မှု စစ်ပါ။"
+  };
+  return map[e.code] || ("အမှား: " + e.message);
+}
+
+function resetRecaptcha() {
+  try { if (recaptchaVerifier) recaptchaVerifier.clear(); } catch {}
+  recaptchaVerifier = null;
+}
+async function sendPhoneCode() {
+  const phone = $("phoneNumber").value.trim().replace(/[\s()-]/g, "");
+  if (!phone.startsWith("+") || phone.length < 8) {
+    return status("ဖုန်းနံပါတ်ကို +နိုင်ငံကုဒ်နဲ့ ထည့်ပါ။ ဥပမာ +959xxxxxxxxx", true);
+  }
+  try {
+    if (!recaptchaVerifier) {
+      recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "normal" });
+    }
+    phoneConfirmation = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+    status("SMS အတည်ပြုကုဒ် ပို့ပြီးပါပြီ။ SMS ရောက်မှ ကုဒ်ထည့်ပါ။");
+  } catch (e) {
+    resetRecaptcha();
+    const msg = e.code === "auth/operation-not-allowed"
+      ? "Firebase Console မှာ Phone provider ကို Enable လုပ်ပါ။ SMS sign-in အတွက် Billing plan လိုအပ်နိုင်ပါတယ်။"
+      : e.code === "auth/invalid-phone-number"
+      ? "ဖုန်းနံပါတ်ပုံစံ မမှန်ပါ။ +နိုင်ငံကုဒ်နဲ့ ပြန်ထည့်ပါ။"
+      : e.code === "auth/captcha-check-failed"
+      ? "reCAPTCHA မအောင်မြင်ပါ။ စာမျက်နှာကို ပြန်ဖွင့်ပြီး ထပ်စမ်းပါ။"
+      : "SMS မပို့နိုင်ပါ: " + e.message;
+    status(msg, true);
+  }
+}
+async function verifyPhoneCode() {
+  const code = $("smsCode").value.trim();
+  if (!phoneConfirmation) return status("အရင်ဆုံး SMS ကုဒ်ပို့မယ်ကို နှိပ်ပါ။", true);
+  if (!code) return status("SMS မှရတဲ့ ကုဒ်ကို ထည့်ပါ။", true);
+  try {
+    const result = await phoneConfirmation.confirm(code);
+    const phoneName = $("displayName").value.trim() || "KT Chat User";
+    if (!result.user.displayName) await updateProfile(result.user, {displayName:phoneName});
+    await setDoc(doc(db, "users", result.user.uid), {
+      displayName: result.user.displayName || phoneName,
+      createdAt: serverTimestamp()
+    }, {merge:true});
+    phoneConfirmation = null;
+    resetRecaptcha();
+    status("ဖုန်းနံပါတ်အတည်ပြုပြီး အကောင့်ဝင်ပါပြီ။");
+  } catch (e) {
+    status(e.code === "auth/invalid-verification-code" ? "SMS ကုဒ် မမှန်ပါ။ ပြန်စစ်ပါ။" : "ကုဒ်အတည်ပြုမရပါ: " + e.message, true);
+  }
+}
+$("sendSms").onclick = () => sendPhoneCode();
+$("verifySms").onclick = () => verifyPhoneCode();
+
+$("logout").onclick = async () => { try { await signOut(auth); } catch(e) { status(e.message,true); } };
+$("copyUid").onclick = async () => {
+  try { await navigator.clipboard.writeText(currentUser.uid); status("UID ကူးယူပြီးပါပြီ။"); }
+  catch { status("UID ကို ဖိထားပြီး ကိုယ်တိုင် Copy လုပ်ပါ။"); }
+};
+function chatIdFor(a,b) { return [a,b].sort().join("__"); }
+async function startChatWith(uid) {
+  uid = uid.trim();
+  if (!uid || uid === currentUser.uid) return status("တစ်ဖက်လူရဲ့ UID ကို မှန်မှန်ထည့်ပါ။", true);
+  try {
+    const userSnap = await getDoc(doc(db, "users", uid));
+    if (!userSnap.exists()) return status("ဒီ UID နဲ့ အကောင့်မတွေ့ပါ။ သူ့ UID မှန်/မမှန် စစ်ပါ။", true);
+    const id = chatIdFor(currentUser.uid, uid);
+    const chatRef = doc(db, "chats", id);
+    const chatSnap = await getDoc(chatRef);
+    if (!chatSnap.exists()) {
+      await setDoc(chatRef, {members:[currentUser.uid,uid].sort(), createdAt:serverTimestamp(), updatedAt:serverTimestamp(), lastMessage:""});
+    }
+    openChat(id, userSnap.data().displayName || "အသုံးပြုသူ");
+    status("Chat ဖွင့်ပြီးပါပြီ။");
+  } catch(e) { status("Chat မဖွင့်နိုင်ပါ: " + e.message + "\nFirestore Rules ကို ပြန်စစ်ပါ။", true); }
+}
+$("startChat").onclick = () => startChatWith($("targetUid").value);
+function listenChats() {
+  if (stopChats) stopChats();
+  const q = query(collection(db,"chats"), where("members","array-contains",currentUser.uid));
+  stopChats = onSnapshot(q, async snap => {
+    const root = $("chatList"); root.replaceChildren();
+    if (snap.empty) { root.textContent = "Chat မရှိသေးပါ။ သူငယ်ချင်း၏ UID ထည့်ပြီး စတင်ပါ။"; return; }
+    for (const d of snap.docs) {
+      const data = d.data(), other = data.members.find(x => x !== currentUser.uid);
+      let name = other || "Unknown";
+      try { const u = await getDoc(doc(db,"users",other)); if(u.exists()) name = u.data().displayName || other; } catch {}
+      const item = document.createElement("div"); item.className = "chatitem";
+      const title = document.createElement("div"); title.textContent = name; title.style.fontWeight="700";
+      const preview = document.createElement("div"); preview.className="muted"; preview.textContent = data.lastMessage || "စာမပို့ရသေးပါ";
+      const btn = document.createElement("button"); btn.className="secondary"; btn.textContent="ဖွင့်မယ်"; btn.onclick=()=>openChat(d.id,name);
+      item.append(title,preview,btn); root.append(item);
+    }
+  }, e => status("Chat စာရင်းဖတ်မရပါ: "+e.message,true));
+}
+function openChat(id, name) {
+  activeChatId = id; $("chatTitle").textContent = "စကားပြောခန်း — " + name;
+  $("messageInput").disabled = false; $("sendBtn").disabled = false;
+  if (stopMessages) stopMessages();
+  const q = query(collection(db,"chats",id,"messages"), orderBy("createdAt","asc"));
+  stopMessages = onSnapshot(q, snap => {
+    const root = $("messages"); root.replaceChildren();
+    snap.forEach(d => {
+      const m = d.data(), outer = document.createElement("div");
+      outer.className = "msg" + (m.senderUid === currentUser.uid ? " mine" : "");
+      const bubble = document.createElement("div"); bubble.className="bubble";
+      bubble.append(document.createTextNode(m.text || ""));
+      const meta = document.createElement("small");
+      const date = m.createdAt?.toDate ? m.createdAt.toDate().toLocaleString() : "ပို့နေသည်...";
+      meta.textContent = (m.senderName || "User") + " · " + date;
+      bubble.append(meta); outer.append(bubble); root.append(outer);
+    });
+    root.scrollTop = root.scrollHeight;
+  }, e => status("စာများဖတ်မရပါ: "+e.message,true));
+}
+
+function callUi(message, showBox=true) {
+  $("callStatus").textContent = message;
+  show("callBox", showBox);
+}
+function listenIncomingCalls() {
+  if (stopIncomingCalls) stopIncomingCalls();
+  const q = query(collection(db, "calls"), where("calleeUid", "==", currentUser.uid), where("status", "==", "ringing"));
+  stopIncomingCalls = onSnapshot(q, snap => {
+    const found = snap.docs.find(d => d.id !== activeCallId);
+    if (!found) return;
+    pendingIncoming = {id:found.id, ...found.data()};
+    callUi("အဝင် " + (pendingIncoming.mode === "video" ? "Video Call 📹" : "Voice Call 📞") + " — " + (pendingIncoming.callerName || "အသုံးပြုသူ") + " ခေါ်နေသည်");
+    show("incomingControls", true);
+    $("hangup").disabled = false;
+  }, e => status("အဝင် Call စစ်မရပါ: " + e.message, true));
+}
+async function startCall(mode) {
+  if (!activeChatId) return status("အရင်ဆုံး Chat တစ်ခု ဖွင့်ပါ။", true);
+  if (activeCallId || pc) return status("Call တစ်ခု လုပ်နေပြီးသားပါ။", true);
+  try {
+    const chatSnap = await getDoc(doc(db, "chats", activeChatId));
+    if (!chatSnap.exists()) throw new Error("Chat မတွေ့ပါ။");
+    const otherUid = chatSnap.data().members.find(x => x !== currentUser.uid);
+    if (!otherUid) throw new Error("တစ်ဖက်လူ UID မတွေ့ပါ။");
+    callMode = mode;
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true, video: mode === "video"});
+    $("localVideo").srcObject = localStream;
+    pc = new RTCPeerConnection(rtcConfig);
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    pc.ontrack = ev => { $("remoteVideo").srcObject = ev.streams[0]; };
+    pc.onconnectionstatechange = () => {
+      if (pc && ["connected"].includes(pc.connectionState)) callUi(mode === "video" ? "Video Call ချိတ်ဆက်ပြီးပါပြီ" : "Voice Call ချိတ်ဆက်ပြီးပါပြီ");
+      if (pc && ["failed","disconnected"].includes(pc.connectionState)) callUi("ချိတ်ဆက်မှု ပြတ်တောက်နေသည်။ Network ပြန်စစ်ပါ။");
+    };
+    const callRef = doc(collection(db, "calls"));
+    activeCallId = callRef.id;
+    pc.onicecandidate = async ev => {
+      if (ev.candidate && activeCallId) {
+        try { await addDoc(collection(db, "calls", activeCallId, "callerCandidates"), ev.candidate.toJSON()); } catch(e) { status("ICE candidate သိမ်းမရပါ: " + e.message, true); }
+      }
+    };
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await setDoc(callRef, {
+      chatId:activeChatId, callerUid:currentUser.uid, callerName:currentUser.displayName || currentUser.email || "User",
+      calleeUid:otherUid, mode, status:"ringing", offer:{type:offer.type,sdp:offer.sdp}, createdAt:serverTimestamp()
+    });
+    stopCallDoc = onSnapshot(callRef, async snap => {
+      const data = snap.data();
+      if (!data) return;
+      if (data.status === "accepted" && data.answer && pc && !pc.currentRemoteDescription) {
+        try { await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); } catch(e) { status("Call answer မဖွင့်နိုင်ပါ: "+e.message,true); }
+      }
+      if (data.status === "ended" || data.status === "declined") {
+        callUi(data.status === "declined" ? "တစ်ဖက်လူက Call ကို ငြင်းလိုက်သည်" : "Call ပြီးဆုံးပါပြီ");
+        await cleanupCall(false);
+      }
+    });
+    stopCalleeIce = onSnapshot(collection(db,"calls",activeCallId,"calleeCandidates"), snap => {
+      snap.docChanges().forEach(change => { if(change.type==="added" && pc) pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(()=>{}); });
+    });
+    callUi((mode === "video" ? "Video Call" : "Voice Call") + " ခေါ်နေသည်… တစ်ဖက်လူ လက်ခံရန်စောင့်ပါ။");
+    $("hangup").disabled = false;
+    status("Call စတင်လိုက်ပါပြီ။ တစ်ဖက်လူကလည်း online ဖြစ်ပြီး လက်ခံရပါမည်။");
+  } catch(e) {
+    await cleanupCall(false);
+    status("Call စတင်မရပါ: " + (e.name === "NotAllowedError" ? "Microphone/Camera permission ခွင့်ပြုပါ။" : e.message), true);
+  }
+}
+async function acceptIncomingCall() {
+  if (!pendingIncoming) return;
+  const incoming = pendingIncoming;
+  try {
+    callMode = incoming.mode;
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:callMode === "video"});
+    $("localVideo").srcObject = localStream;
+    pc = new RTCPeerConnection(rtcConfig);
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    pc.ontrack = ev => { $("remoteVideo").srcObject = ev.streams[0]; };
+    pc.onconnectionstatechange = () => {
+      if (pc && pc.connectionState === "connected") callUi(callMode === "video" ? "Video Call ချိတ်ဆက်ပြီးပါပြီ" : "Voice Call ချိတ်ဆက်ပြီးပါပြီ");
+      if (pc && ["failed","disconnected"].includes(pc.connectionState)) callUi("ချိတ်ဆက်မှု ပြတ်တောက်နေသည်။ Network ပြန်စစ်ပါ။");
+    };
+    activeCallId = incoming.id;
+    const callRef = doc(db,"calls",activeCallId);
+    pc.onicecandidate = async ev => {
+      if (ev.candidate && activeCallId) {
+        try { await addDoc(collection(db,"calls",activeCallId,"calleeCandidates"), ev.candidate.toJSON()); } catch(e) { status("ICE candidate သိမ်းမရပါ: "+e.message,true); }
+      }
+    };
+    await pc.setRemoteDescription(new RTCSessionDescription(incoming.offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await updateDoc(callRef,{answer:{type:answer.type,sdp:answer.sdp},status:"accepted",acceptedAt:serverTimestamp()});
+    stopCallDoc = onSnapshot(callRef, async snap => {
+      const data = snap.data();
+      if (data && (data.status === "ended" || data.status === "declined")) {
+        callUi("Call ပြီးဆုံးပါပြီ");
+        await cleanupCall(false);
+      }
+    });
+    stopCallerIce = onSnapshot(collection(db,"calls",activeCallId,"callerCandidates"), snap => {
+      snap.docChanges().forEach(change => { if(change.type==="added" && pc) pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(()=>{}); });
+    });
+    show("incomingControls",false);
+    pendingIncoming = null;
+    $("hangup").disabled = false;
+    callUi("Call ချိတ်ဆက်နေသည်…");
+  } catch(e) {
+    await cleanupCall(false);
+    status("Call လက်ခံမရပါ: "+(e.name === "NotAllowedError" ? "Microphone/Camera permission ခွင့်ပြုပါ။" : e.message),true);
+  }
+}
+async function declineIncomingCall() {
+  if (!pendingIncoming) return;
+  try { await updateDoc(doc(db,"calls",pendingIncoming.id),{status:"declined"}); } catch {}
+  pendingIncoming = null;
+  show("incomingControls",false);
+  callUi("အဝင် Call ကို ငြင်းလိုက်ပါပြီ");
+}
+async function cleanupCall(markEnded=true) {
+  const id = activeCallId;
+  if (markEnded && id && db) {
+    try { await updateDoc(doc(db,"calls",id),{status:"ended",endedAt:serverTimestamp()}); } catch {}
+  }
+  if (stopCallDoc) stopCallDoc();
+  if (stopCallerIce) stopCallerIce();
+  if (stopCalleeIce) stopCalleeIce();
+  stopCallDoc = stopCallerIce = stopCalleeIce = null;
+  if (pc) { try { pc.ontrack=null; pc.close(); } catch {} }
+  pc = null;
+  if (localStream) localStream.getTracks().forEach(t=>t.stop());
+  localStream = null;
+  $("localVideo").srcObject = null; $("remoteVideo").srcObject = null;
+  activeCallId = null; callMode = null;
+  $("hangup").disabled = true;
+  show("incomingControls",false);
+}
+$("voiceCall").onclick = () => startCall("audio");
+$("videoCall").onclick = () => startCall("video");
+$("acceptCall").onclick = () => acceptIncomingCall();
+$("declineCall").onclick = () => declineIncomingCall();
+$("hangup").onclick = async () => { await cleanupCall(true); callUi("Call ပြီးဆုံးပါပြီ"); };
+
+$("sendForm").onsubmit = async (event) => {
+  event.preventDefault();
+  const text = $("messageInput").value.trim();
+  if (!text || !activeChatId || !currentUser) return;
+  $("sendBtn").disabled = true;
+  try {
+    const chatRef = doc(db,"chats",activeChatId);
+    const snap = await getDoc(chatRef);
+    if (!snap.exists() || !snap.data().members.includes(currentUser.uid)) throw new Error("ဒီ Chat မှာ ပို့ခွင့်မရှိပါ။");
+    await addDoc(collection(db,"chats",activeChatId,"messages"), {
+      text, senderUid:currentUser.uid, senderName:currentUser.displayName || currentUser.email || "User", createdAt:serverTimestamp()
+    });
+    await updateDoc(chatRef, {lastMessage:text.slice(0,100), updatedAt:serverTimestamp()});
+    $("messageInput").value = "";
+  } catch(e) { status("စာပို့မရပါ: "+e.message,true); }
+  finally { $("sendBtn").disabled = false; }
+};
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(err => console.warn("PWA service worker:", err));
+  });
+}
+</script>
+</body>
+</html>
